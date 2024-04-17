@@ -106,25 +106,24 @@ const requestListener = async (req, res) => {
     }
   }else if (req.url.startsWith("/rooms/") && req.method === "PATCH") {
     const roomId = req.url.split("/").pop();
-    try {
-      const data = JSON.parse(body);
-      const updatedRoom = await Room.findByIdAndUpdate(
-        roomId,
-        { $set: data }
-      );
-      res.writeHead(200, headers);
-      res.write(
-        JSON.stringify({
-          status: "success",
-          room: updatedRoom,
-        })
-      );
-      res.end();
-    } catch (error) {
-      console.log(error);
-      res.writeHead(500, headers);
-      res.end();
-    }
+    req.on("end", async () => {
+      try {
+        const data = JSON.parse(body);
+        const updatedRoom = await Room.findByIdAndUpdate(roomId,{ $set:  data });
+        res.writeHead(200, headers);
+        res.write(
+          JSON.stringify({
+            status: "success",
+            room: updatedRoom,
+          })
+        );
+        res.end();
+      } catch (error) {
+        console.log(error);
+        res.writeHead(500, headers);
+        res.end();
+      }
+    });
   }else if (req.method === "OPTIONS") {
     res.writeHead(200, headers);
     res.end();
