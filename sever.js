@@ -1,16 +1,14 @@
 const http = require("http");
 const mongoose = require("mongoose");
 const Room = require("./models/room");
+const dotenv = require("dotenv");
+dotenv.config({ path: "./config.env" });
 
-const dotenv =require("dotenv")
-dotenv.config({path:"./config.env"})
-//process.env.PORT
-
-const DB =process.env.DATABASE.replace(
-  '<password>',
+const DB = process.env.DATABASE.replace(
+  "<password>",
   process.env.DATABASE_PASSWORD
-)
-// 連接資料庫
+);
+
 mongoose
   .connect(DB)
   .then(() => {
@@ -25,32 +23,31 @@ const requestListener = async (req, res) => {
   req.on("data", (chunk) => {
     body += chunk;
   });
+
   const headers = {
     "Access-Control-Allow-Headers":
       "Content-Type, Authorization, Content-Length, X-Requested-With",
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "PATCH, POST, GET,OPTIONS,DELETE",
+    "Access-Control-Allow-Methods": "PATCH, POST, GET, OPTIONS, DELETE",
     "Content-Type": "application/json",
   };
+
   if (req.url == "/rooms" && req.method == "GET") {
-    const rooms = await Room.find();
-    res.writeHead(200, headers);
-    res.write(
-      JSON.stringify({
-        "status": "success",
-        rooms,
-      })
-    );
-    
-    // Room.findOneAndDelete("660a68623a65aaa80b9f9910").then(() => {
-    //   console.log("刪除成功");
-    // });
-    // Room.findByIdAndUpdate("660d1da89284f9db2dcb4431",{
-    //   "name":"皮克斯四人房"
-    // }).then(()=>{
-    //   console.log("更新成功");
-    // })
-    res.end();
+    try {
+      const rooms = await Room.find();
+      res.writeHead(200, headers);
+      res.write(
+        JSON.stringify({
+          status: "success",
+          rooms,
+        })
+      );
+      res.end();
+    } catch (error) {
+      console.log(error);
+      res.writeHead(500, headers);
+      res.end();
+    }
   } else if (req.url == "/rooms" && req.method == "POST") {
     req.on("end", async () => {
       try {
@@ -63,27 +60,72 @@ const requestListener = async (req, res) => {
         res.writeHead(200, headers);
         res.write(
           JSON.stringify({
-            "status": "success",
-            "rooms": newRoom,
+            status: "success",
+            rooms: newRoom,
           })
         );
         res.end();
       } catch (error) {
         console.log(error);
+        res.writeHead(500, headers);
         res.end();
       }
     });
-  } else if ((req.url = "/rooms" && req.method == "DELETE")) {
-    await Room.deleteMany({});
-    res.writeHead(200, headers);
-    res.write(
-      JSON.stringify({
-        "status": "success",
-        rooms: [],
-      })
-    );
-    res.end();
-  } else if (req.method == "OPTIONS") {
+  } else if (req.url === "/rooms" && req.method === "DELETE") {
+    try {
+      await Room.deleteMany({});
+      res.writeHead(200, headers);
+      res.write(
+        JSON.stringify({
+          status: "success",
+          rooms: [],
+        })
+      );
+      res.end();
+    } catch (error) {
+      console.log(error);
+      res.writeHead(500, headers);
+      res.end();
+    }
+  } else if (req.url.startsWith("/rooms/") && req.method === "DELETE") {
+    const roomId = req.url.split("/").pop();
+    try {
+      const room = await Room.findByIdAndDelete(roomId);
+      res.writeHead(200, headers);
+      res.write(
+        JSON.stringify({
+          status: "success",
+          room,
+        })
+      );
+      res.end();
+    } catch (error) {
+      console.log(error);
+      res.writeHead(500, headers);
+      res.end();
+    }
+  }else if (req.url.startsWith("/rooms/") && req.method === "PATCH") {
+    const roomId = req.url.split("/").pop();
+    try {
+      const data = JSON.parse(body);
+      const updatedRoom = await Room.findByIdAndUpdate(
+        roomId,
+        { $set: data }
+      );
+      res.writeHead(200, headers);
+      res.write(
+        JSON.stringify({
+          status: "success",
+          room: updatedRoom,
+        })
+      );
+      res.end();
+    } catch (error) {
+      console.log(error);
+      res.writeHead(500, headers);
+      res.end();
+    }
+  }else if (req.method === "OPTIONS") {
     res.writeHead(200, headers);
     res.end();
   } else {
@@ -99,4 +141,4 @@ const requestListener = async (req, res) => {
 };
 
 const server = http.createServer(requestListener);
-server.listen(process.env.PORT);
+server.listen(process.env.PORT || 3005);
